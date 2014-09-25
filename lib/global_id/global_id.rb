@@ -3,16 +3,19 @@ require 'active_support/core_ext/string/inflections'  # For #model_class constan
 require 'active_support/core_ext/array/access'
 require 'active_support/core_ext/object/try'          # For #find
 require 'active_support/core_ext/module/delegation'
-require 'uri'
+require 'global_id/uri/gid'
 
 class GlobalID
   class << self
     attr_reader :app
 
     def create(model, options = {})
-      app = options.fetch :app, GlobalID.app
-      raise ArgumentError, "An app is required to create a GlobalID. Pass the :app option or set the default GlobalID.app." unless app
-      new URI::GlobalID.create(app, model), options
+      if app = options.fetch(:app) { GlobalID.app }
+        new URI::GID.create(app, model), options
+      else
+        raise ArgumentError, 'An app is required to create a GlobalID. ' \
+          'Pass the :app option or set the default GlobalID.app.'
+      end
     end
 
     def find(gid, options = {})
@@ -26,11 +29,7 @@ class GlobalID
     end
 
     def app=(app)
-      @app = validate_app(app)
-    end
-
-    def validate_app(app)
-      URI::GlobalID.validate_app(app)
+      @app = URI::GID.validate_app(app)
     end
 
     private
@@ -49,7 +48,7 @@ class GlobalID
   delegate :app, :model_name, :model_id, :to_s, to: :uri
 
   def initialize(gid, options = {})
-    @uri = gid.is_a?(URI::GlobalID) ? gid : URI::GlobalID.parse(gid)
+    @uri = gid.is_a?(URI::GID) ? gid : URI::GID.parse(gid)
   end
 
   def find(options = {})
